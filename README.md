@@ -23,8 +23,20 @@
 - 仅在 `HyperOS2` 测试通过，理论不支持 `Miui` 系统。
 - 安装后勾选`系统界面`并重启后即可使用。
 - 触发自动切换方法： 持续拖动小窗直到再次感觉到震动时松开即可。
-- 同时支持设置 `setprop persist.hchen.switch.freeform.always true`，即可始终触发切换，设置 `false` 禁用，默认禁用。
-- 当然可以设置 `setprop persist.hchen.switch.freeform.threshold 800`，自定义敏感度。 Tip：800 为默认值，只可设置数字！不建议大于 1000。
+- 同时支持设置 `setprop persist.hchen.switch.freeform.always true`，即可始终触发切换，设置 `false`
+  禁用，默认禁用。
+- 当然可以设置 `setprop persist.hchen.switch.freeform.threshold 800`，自定义敏感度。 Tip：800
+  为默认值，只可设置数字！不建议大于 1000。
+
+# 🙏致谢名单
+
+- 本模块使用了如下项目作为依赖或引用其代码，对此表示由衷的感谢：
+
+|   项目名称   |                      项目链接                      |
+|:--------:|:----------------------------------------------:|
+| HookTool | [HookTool](https://github.com/HChenX/HookTool) |
+|   翻译提供   |                      提供者                       |
+|   简体中文   |                    焕晨HChen                     |
 
 # 📢项目声明
 
