@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">SwitchFreeForm</string>
+    <string name="app_info">拉动小窗应用全屏时自动将底层全屏应用切换为小窗模式。</string>
+</resources>
