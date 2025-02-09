@@ -82,8 +82,14 @@ public class SwitchFreeForm extends BaseHC {
 
     @Override
     protected void init() {
-        isAlwaysSwitchFreeForm = SystemPropTool.getProp("persist.hchen.switch.freeform.always", false);
-        mSwitchFreeFormThreshold = SystemPropTool.getProp("persist.hchen.switch.freeform.threshold", 800);
+        try {
+            isAlwaysSwitchFreeForm = SystemPropTool.getProp("persist.hchen.switch.freeform.always", false);
+            mSwitchFreeFormThreshold = SystemPropTool.getProp("persist.hchen.switch.freeform.threshold", 800);
+        } catch (Throwable e) {
+            isAlwaysSwitchFreeForm = false;
+            mSwitchFreeFormThreshold = 800;
+            logE(TAG, e);
+        }
 
         hookMethod("com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeMoveHandler",
             "onBottomCaptionHandleMotionEvents",

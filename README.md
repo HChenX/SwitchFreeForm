@@ -16,14 +16,15 @@
 # ✨模块介绍
 
 - 拖动小窗至全屏时自动将底层全屏应用切换为小窗模式。
+- 仅支持向下拖动展开的方式。
 
 # 💡模块说明
 
 - 仅在 `HyperOS2` 测试通过，理论不支持 `Miui` 系统。
 - 安装后勾选`系统界面`并重启后即可使用。
 - 触发自动切换方法： 持续拖动小窗直到再次感觉到震动时松开即可。
-- 同时支持设置 `setprop persist.hchen.switch.freeform.always true`，即可始终触发切换。 
-- 当然可以设置 `setprop persist.hchen.switch.freeform.threshold 800`，自定义敏感度。 Tip：800 为默认值。
+- 同时支持设置 `setprop persist.hchen.switch.freeform.always true`，即可始终触发切换，设置 `false` 禁用，默认禁用。
+- 当然可以设置 `setprop persist.hchen.switch.freeform.threshold 800`，自定义敏感度。 Tip：800 为默认值，只可设置数字！不建议大于 1000。
 
 # 📢项目声明
 
