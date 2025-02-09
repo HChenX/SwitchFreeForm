@@ -109,7 +109,7 @@ public class SwitchFreeForm extends BaseHC {
                     boolean isLandscape = (boolean) callStaticMethod("com.android.wm.shell.multitasking.common.MultiTaskingDisplayInfo", "isLandscape");
                     f6 = isLandscape ? 25.0f : 300.f;
                     isReadyExpandToFullScreen = round >= f6;
-                    int computeSwitchFreeFormThreshold = 800;
+                    int computeSwitchFreeFormThreshold = mSwitchFreeFormThreshold;
                     if (isLandscape) {
                         Object miuiFreeformModeTaskInfo = getArgs(3);
                         float mScale = (float) getField(miuiFreeformModeTaskInfo, "mScale");
