@@ -34,7 +34,7 @@ public class HookInit extends HCEntrance {
     public HCInit.BasicData initHC(HCInit.BasicData basicData) {
         return basicData.setTag("SwitchFreeForm")
             .setLogLevel(HCInit.LOG_D)
-            .setModulePackageName("com.hchen.switchfreeform")
+            .setModulePackageName(BuildConfig.APPLICATION_ID)
             .initLogExpand(new String[]{
                 "com.hchen.switchfreeform.hook"
             });
