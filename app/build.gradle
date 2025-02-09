@@ -3,6 +3,29 @@ plugins {
 }
 
 android {
+    def apk = "SwitchFreeForm"
+
+    Properties properties = new Properties()
+    InputStream inputStream = project.rootProject.file('local.properties').newDataInputStream()
+    properties.load(inputStream)
+
+    def keyKeyStoreFile = file(properties.getProperty('keyStoreFile'))
+    def keyKeyStorePassword = properties.getProperty('keyStorePassword')
+    def keyKeyAlias = properties.getProperty('keyAlias')
+    def keyKeyAliasPassword = properties.getProperty('keyAliasPassword')
+
+    signingConfigs {
+        release {
+            storeFile keyKeyStoreFile
+            storePassword keyKeyStorePassword
+            keyAlias keyKeyAlias
+            keyPassword keyKeyAliasPassword
+            enableV2Signing true
+            enableV3Signing true
+            enableV4Signing true
+        }
+    }
+
     namespace 'com.hchen.switchfreeform'
     compileSdk 35
 
@@ -10,19 +33,40 @@ android {
         applicationId "com.hchen.switchfreeform"
         minSdk 34
         targetSdk 35
-        versionCode 1
+        //noinspection HighAppVersionCode
+        versionCode 2025020900
         versionName "1.0"
+
+        signingConfig signingConfigs.release
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
+    }
+
+    android {
+        applicationVariants.configureEach { variant ->
+            variant.outputs.configureEach { output ->
+                outputFileName = "${apk}-v${variant.versionName}(${variant.versionCode})_${variant.buildType.name}.apk"
+            }
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 }
 
