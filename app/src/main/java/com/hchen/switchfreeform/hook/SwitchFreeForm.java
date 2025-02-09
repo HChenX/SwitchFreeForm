@@ -126,9 +126,6 @@ public class SwitchFreeForm extends BaseHC {
                         } else {
                             computeSwitchFreeFormThreshold = mSwitchFreeFormThreshold / 8;
                         }
-
-                        AndroidLog.logI(TAG, "Adjusted threshold: " + computeSwitchFreeFormThreshold
-                            + " for scale: " + mScale);
                     }
                     if (isReadyExpandToFullScreen && !isReadySwitchFreeForm) {
                         isReadySwitchFreeForm = round >= (computeSwitchFreeFormThreshold);
