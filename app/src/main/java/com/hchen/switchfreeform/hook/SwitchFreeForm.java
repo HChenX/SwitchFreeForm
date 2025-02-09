@@ -109,8 +109,29 @@ public class SwitchFreeForm extends BaseHC {
                     boolean isLandscape = (boolean) callStaticMethod("com.android.wm.shell.multitasking.common.MultiTaskingDisplayInfo", "isLandscape");
                     f6 = isLandscape ? 25.0f : 300.f;
                     isReadyExpandToFullScreen = round >= f6;
+                    int computeSwitchFreeFormThreshold = 800;
+                    if (isLandscape) {
+                        Object miuiFreeformModeTaskInfo = getArgs(3);
+                        float mScale = (float) getField(miuiFreeformModeTaskInfo, "mScale");
+                        float baseMultiplier = 255f;
+                        float offset = 330f;
+
+                        if (mScale > 0.1f) {
+                            computeSwitchFreeFormThreshold = (int) (baseMultiplier / mScale - offset);
+
+                            int MAX_THRESHOLD = 450;
+                            if (computeSwitchFreeFormThreshold > MAX_THRESHOLD) {
+                                computeSwitchFreeFormThreshold = MAX_THRESHOLD;
+                            }
+                        } else {
+                            computeSwitchFreeFormThreshold = mSwitchFreeFormThreshold / 8;
+                        }
+
+                        AndroidLog.logI(TAG, "Adjusted threshold: " + computeSwitchFreeFormThreshold
+                            + " for scale: " + mScale);
+                    }
                     if (isReadyExpandToFullScreen && !isReadySwitchFreeForm) {
-                        isReadySwitchFreeForm = round >= mSwitchFreeFormThreshold;
+                        isReadySwitchFreeForm = round >= (computeSwitchFreeFormThreshold);
                         Context mContext = (Context) getThisField("mContext");
                         if (isReadySwitchFreeForm) {
                             callMethod(
@@ -125,7 +146,7 @@ public class SwitchFreeForm extends BaseHC {
                                 mContext
                             );
                         }
-                    } else if (round < mSwitchFreeFormThreshold)
+                    } else if (round < computeSwitchFreeFormThreshold)
                         isReadySwitchFreeForm = false;
                 }
             }
