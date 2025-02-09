@@ -23,3 +23,4 @@
 -keep class com.hchen.switchfreeform.HookInit
 -keep class com.hchen.switchfreeform.hook.**
 -keep class com.hchen.switchfreeform.hook.**$*
+-keep class com.hchen.switchfreeform.hook.ForegroundInfoListener {*;}
