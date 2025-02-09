@@ -9,7 +9,7 @@
 ![last commit](https://img.shields.io/github/last-commit/HChenX/SwitchFreeForm?style=flat)
 ![language](https://img.shields.io/badge/language-java-purple)
 
-<p><b><a href="README-en.md">English</a> | <a href="README.md">简体中文</a></b></p>
+[//]: # (<p><b><a href="README-en.md">English</a> | <a href="README.md">简体中文</a></b></p>)
 <p>拖动小窗至全屏时自动将底层全屏应用切换为小窗模式</p>
 </div>
 
