@@ -34,7 +34,7 @@ android {
         minSdk 34
         targetSdk 35
         //noinspection HighAppVersionCode
-        versionCode 2025021001
+        versionCode 2025021002
         versionName "1.2"
 
         signingConfig signingConfigs.release

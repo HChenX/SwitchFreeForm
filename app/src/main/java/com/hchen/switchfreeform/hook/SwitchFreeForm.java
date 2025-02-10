@@ -261,7 +261,7 @@ public class SwitchFreeForm extends BaseHC {
                     Rect rect = (Rect) getField(mMiuiFreeformModeTaskInfo, "mBounds");
                     float scale = (float) getField(mMiuiFreeformModeTaskInfo, "mScale");
                     mFreeFormRect2Scale.put(mPackageName, new Pair<>(rect, scale));
-                    AndroidLog.logI(TAG, "add rect map! Package: " + mPackageName + ", Rect: " + rect + ", Scale: " + scale);
+                    AndroidLog.logI(TAG, "Add rect map! Package: " + mPackageName + ", Rect: " + rect + ", Scale: " + scale);
 
                     mHandler.sendMessageDelayed(mHandler.obtainMessage(SWITCH_FREEFORM_READY, context), SWITCH_FREEFORM_READY_DELAY);
                 }
