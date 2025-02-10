@@ -28,10 +28,9 @@
 - 当然可以设置 `setprop persist.hchen.switch.freeform.threshold 800`，自定义敏感度。 Tip：800
   为默认值，只可设置数字！范围建议 500 - 900，数值越大需要滑动的距离越长。
 
-- 建议的食用方法：
-
-* 向下拉动小窗控制条直至再次感觉到震动，即可进行切换。
-* 或者设置 `setprop persist.hchen.switch.freeform.always true`
+* 建议的食用方法：
+  * 向下拉动小窗控制条直至再次感觉到震动，即可进行切换。
+  * 或者设置 `setprop persist.hchen.switch.freeform.always true`
   始终触发切换，同时使用向上拖动小窗至屏幕顶部来进行仅切换操作（因为拖动至顶部的切换逻辑未修改）。
 
 - Debug 设置：
