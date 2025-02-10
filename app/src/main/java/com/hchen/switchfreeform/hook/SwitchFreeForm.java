@@ -26,13 +26,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.StaticLayout;
+import android.os.Message;
 import android.util.Pair;
+import android.view.WindowManager;
 
 import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.HCData;
@@ -40,6 +42,7 @@ import com.hchen.hooktool.hook.IHook;
 import com.hchen.hooktool.log.AndroidLog;
 import com.hchen.hooktool.tool.additional.SystemPropTool;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -52,28 +55,58 @@ import dalvik.system.PathClassLoader;
  * @author 焕晨HChen
  */
 public class SwitchFreeForm extends BaseHC {
+    private static final String TAG = "SwitchFreeForm";
+    private static final Point mPoint = new Point();
+    private static boolean mLastIsLandscape = false;
     private static boolean isReadyExpandToFullScreen = false;
     private static boolean isReadySwitchFreeForm = false;
-    @Deprecated
-    private static Object mMiuiFreeformAnimation;
-    @Deprecated
-    private static Object mMultiTaskingTaskRepository;
     private static String mPackageName = null;
     private static Object mMiuiFreeformModeTaskInfo;
     private static Object mForegroundInfoListener = null;
     private static boolean isAnimatorStarted = false;
     private static boolean isAlwaysSwitchFreeForm = false;
     private static int mSwitchFreeFormThreshold = 800;
-    @Deprecated
-    private static StaticLayout mFullscreenStaticLayout;
+    private static final int SWITCH_FREEFORM_DELAY = 450;
+    private static final int SWITCH_FREEFORM_READY_DELAY = 600;
+    private static int mScreenY = -1;
+    private static final int SWITCH_FREEFORM_READY = 1;
     private final static ConcurrentLinkedQueue<Runnable> mRunnableQueue = new ConcurrentLinkedQueue<>();
     private static final Runnable QUEUE_PROCESSOR = SwitchFreeForm::processNextTask;
-    private final static Handler mHandler = new Handler(Looper.getMainLooper());
+    private final static Handler mHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            if (SWITCH_FREEFORM_READY == msg.what) {
+                Context context = (Context) msg.obj;
+                final String mPackageName = (String) getField(mForegroundInfoListener, "mLastForegroundPackageName");
+                AndroidLog.logI(TAG, "mLastForegroundPackageName: " + mPackageName + ", time: " + System.currentTimeMillis());
+                mRunnableQueue.offer(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mPackageName == null) return;
+                        if (mPackageName.equals("com.miui.home")) return;
+
+                        startFreeForm(context, mPackageName);
+                    }
+                });
+
+                if (!isAnimatorStarted)
+                    mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_DELAY);
+            }
+        }
+    };
     private final static HashMap<String, Pair<Rect, Float>> mFreeFormRect2Scale = new HashMap<>();
+
+    private static String mMiuiFreeformModeMoveHandlerClass = "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeMoveHandler";
+    private static String mMiuiFreeformModeTaskInfoClass = "com.android.wm.shell.multitasking.taskmanager.MiuiFreeformModeTaskInfo";
+    private static String mMultiTaskingDisplayInfoClass = "com.android.wm.shell.multitasking.common.MultiTaskingDisplayInfo";
+    private static String mMiuiFreeformModeVibrateHelperClass = "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVibrateHelper";
+    private static String mMiuiFreeformModeVisualIndicatorClass = "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVisualIndicator";
+    private static String mVisualIndicatorAnimator$2Class = "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVisualIndicator.VisualIndicatorAnimator$2";
 
     @Override
     protected void onApplicationAfter(Context context) {
         try {
+            getScreenSize(context);
             registerForegroundWindowListener();
         } catch (Throwable e) {
             logE(TAG, e);
@@ -82,6 +115,14 @@ public class SwitchFreeForm extends BaseHC {
 
     @Override
     protected void init() {
+        boolean isOS1 = existsClass("com.android.wm.shell.miuifreeform.MiuiFreeformModeMoveHandler");
+        if (isOS1) updateClassPathToOS1();
+
+        if (!existsClass(mMiuiFreeformModeMoveHandlerClass)) {
+            logW(TAG, "Your Device Not Support Switch FreeForm!!!");
+            return;
+        }
+
         try {
             isAlwaysSwitchFreeForm = SystemPropTool.getProp("persist.hchen.switch.freeform.always", false);
             mSwitchFreeFormThreshold = SystemPropTool.getProp("persist.hchen.switch.freeform.threshold", 800);
@@ -91,27 +132,46 @@ public class SwitchFreeForm extends BaseHC {
             logE(TAG, e);
         }
 
-        hookMethod("com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeMoveHandler",
-            "onBottomCaptionHandleMotionEvents",
-            float.class, float.class, PointF.class,
-            "com.android.wm.shell.multitasking.taskmanager.MiuiFreeformModeTaskInfo",
-            int.class,
+        Method onBottomCaptionHandleMotionEventsMethod;
+        if (isOS1)
+            onBottomCaptionHandleMotionEventsMethod = findMethod(mMiuiFreeformModeMoveHandlerClass,
+                "onBottomCaptionHandleMotionEvents",
+                float.class, float.class, PointF.class, "com.android.wm.shell.miuifreeform.VelocityMonitor", mMiuiFreeformModeTaskInfoClass, int.class
+            );
+        else
+            onBottomCaptionHandleMotionEventsMethod = findMethod(mMiuiFreeformModeMoveHandlerClass,
+                "onBottomCaptionHandleMotionEvents",
+                float.class, float.class, PointF.class, mMiuiFreeformModeTaskInfoClass, int.class
+            );
+
+        hook(onBottomCaptionHandleMotionEventsMethod,
             new IHook() {
                 @Override
                 public void after() {
+                    if (isOS1) {
+                        mMiuiFreeformModeTaskInfo = getArgs(4);
+                        mPackageName = (String) getField(mMiuiFreeformModeTaskInfo, "mPackageName");
+                    }
                     if (isAlwaysSwitchFreeForm) return;
+                    Context mContext = (Context) getThisField("mContext");
 
-                    float f6;
-                    float f5 = (float) getArgs(1);
+                    float expandValue;
+                    float y = (float) getArgs(1);
                     PointF pointF = (PointF) getArgs(2);
-                    int round = Math.round(f5 - pointF.y);
+                    int round = Math.round(y - pointF.y);
+                    boolean isLandscape = false;
+                    if (isOS1) {
+                        Object displayLayout = callMethod(getThisField("mMiuiFreeformModeDisplayInfo"), "getDisplayLayout");
+                        isLandscape = ((int) getField(displayLayout, "mWidth")) > ((int) getField(displayLayout, "mHeight"));
+                    } else
+                        isLandscape = (boolean) callStaticMethod("com.android.wm.shell.multitasking.common.MultiTaskingDisplayInfo", "isLandscape");
+                    updateScreenSizeIfNeed(mContext, isLandscape);
 
-                    boolean isLandscape = (boolean) callStaticMethod("com.android.wm.shell.multitasking.common.MultiTaskingDisplayInfo", "isLandscape");
-                    f6 = isLandscape ? 25.0f : 300.f;
-                    isReadyExpandToFullScreen = round >= f6;
-                    int computeSwitchFreeFormThreshold = mSwitchFreeFormThreshold;
+                    expandValue = isLandscape ? 25.0f : 300.f;
+                    isReadyExpandToFullScreen = round >= expandValue;
+                    int computeSwitchFreeFormThreshold = 800;
                     if (isLandscape) {
-                        Object miuiFreeformModeTaskInfo = getArgs(3);
+                        Object miuiFreeformModeTaskInfo = isOS1 ? getArgs(4) : getArgs(3);
                         float mScale = (float) getField(miuiFreeformModeTaskInfo, "mScale");
                         float baseMultiplier = 255f;
                         float offset = 330f;
@@ -129,40 +189,60 @@ public class SwitchFreeForm extends BaseHC {
                     }
                     if (isReadyExpandToFullScreen && !isReadySwitchFreeForm) {
                         isReadySwitchFreeForm = round >= (computeSwitchFreeFormThreshold);
-                        Context mContext = (Context) getThisField("mContext");
+                        if (!isReadySwitchFreeForm)
+                            isReadySwitchFreeForm = (mScreenY - 100 < y);
+
                         if (isReadySwitchFreeForm) {
-                            callMethod(
-                                callStaticMethod(
-                                    "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVibrateHelper",
-                                    "getInstance",
+                            if (isOS1) {
+                                callMethod(
+                                    getThisField("mMiuiFreeformModeVibrateHelper"),
+                                    "hapticFeedback",
+                                    callMethod(
+                                        callStaticMethod(
+                                            "com.xiaomi.freeform.MiuiFreeformStub",
+                                            "getInstance"
+                                        ),
+                                        "getHapticNormal"
+                                    ),
+                                    false,
                                     mContext
-                                ),
-                                "hapticFeedback",
-                                callStaticMethod("android.util.MiuiMultiWindowUtils", "getHapticNormal"),
-                                false,
-                                mContext
-                            );
+                                );
+                            } else {
+                                callMethod(
+                                    callStaticMethod(
+                                        "com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVibrateHelper",
+                                        "getInstance",
+                                        mContext
+                                    ),
+                                    "hapticFeedback",
+                                    callStaticMethod("android.util.MiuiMultiWindowUtils", "getHapticNormal"),
+                                    false,
+                                    mContext
+                                );
+                            }
                         }
-                    } else if (round < computeSwitchFreeFormThreshold)
+                    } else if (round < computeSwitchFreeFormThreshold && mScreenY - 100 > y)
                         isReadySwitchFreeForm = false;
                 }
             }
         );
 
-        hookConstructor("com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVisualIndicator",
-            Context.class, "com.android.wm.shell.common.DisplayController",
-            "com.android.wm.shell.multitasking.taskmanager.MiuiFreeformModeTaskInfo",
-            "com.android.wm.shell.RootTaskDisplayAreaOrganizer",
-            new IHook() {
-                @Override
-                public void after() {
-                    mMiuiFreeformModeTaskInfo = getArgs(2);
-                    mPackageName = (String) getField(mMiuiFreeformModeTaskInfo, "mPackageName");
+        if (!isOS1) {
+            hookConstructor(mMiuiFreeformModeVisualIndicatorClass,
+                Context.class, "com.android.wm.shell.common.DisplayController",
+                mMiuiFreeformModeTaskInfoClass,
+                "com.android.wm.shell.RootTaskDisplayAreaOrganizer",
+                new IHook() {
+                    @Override
+                    public void after() {
+                        mMiuiFreeformModeTaskInfo = getArgs(2);
+                        mPackageName = (String) getField(mMiuiFreeformModeTaskInfo, "mPackageName");
+                    }
                 }
-            }
-        );
+            );
+        }
 
-        hookMethod("com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVisualIndicator",
+        hookMethod(mMiuiFreeformModeVisualIndicatorClass,
             "startReleaseFullscreenIndicatorAnimation",
             new IHook() {
                 @Override
@@ -176,28 +256,12 @@ public class SwitchFreeForm extends BaseHC {
                     mFreeFormRect2Scale.put(mPackageName, new Pair<>(rect, scale));
                     AndroidLog.logI(TAG, "add rect map! Package: " + mPackageName + ", Rect: " + rect + ", Scale: " + scale);
 
-                    mHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            final String mPackageName = (String) getField(mForegroundInfoListener, "mLastForegroundPackageName");
-                            mRunnableQueue.offer(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (mPackageName == null) return;
-                                    if (mPackageName.equals("com.miui.home")) return;
-                                    AndroidLog.logI(TAG, "mLastForegroundPackageName: " + mPackageName + ", time: " + System.currentTimeMillis());
-
-                                    startFreeForm(context, mPackageName);
-                                }
-                            });
-                        }
-                    }, 80);
-
+                    mHandler.sendMessageDelayed(mHandler.obtainMessage(SWITCH_FREEFORM_READY, context), SWITCH_FREEFORM_READY_DELAY);
                 }
             }
         );
 
-        hookMethod("com.android.wm.shell.multitasking.miuifreeform.MiuiFreeformModeVisualIndicator.VisualIndicatorAnimator$2",
+        hookMethod(mVisualIndicatorAnimator$2Class,
             "onAnimationEnd", Animator.class,
             new IHook() {
                 @Override
@@ -205,7 +269,9 @@ public class SwitchFreeForm extends BaseHC {
                     if (!isReadySwitchFreeForm && !isAlwaysSwitchFreeForm) return;
                     if (!isAnimatorStarted) return;
 
-                    mHandler.postDelayed(QUEUE_PROCESSOR, 300);
+                    if (!mHandler.hasMessages(SWITCH_FREEFORM_READY)) {
+                        mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_DELAY);
+                    }
                     isAnimatorStarted = false;
                 }
             }
@@ -218,15 +284,15 @@ public class SwitchFreeForm extends BaseHC {
             try {
                 task.run();
             } catch (Throwable e) {
-                logE("SwitchFreeForm", e);
+                logE(TAG, e);
             } finally {
-                mHandler.postDelayed(QUEUE_PROCESSOR, 300);
+                mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_DELAY);
             }
         }
     }
 
     @SuppressLint("QueryPermissionsNeeded")
-    private void startFreeForm(Context context, String packageName) {
+    private static void startFreeForm(Context context, String packageName) {
         PackageManager packageManager = context.getPackageManager();
         Intent intent = new Intent("android.intent.action.MAIN");
         intent.addCategory("android.intent.category.LAUNCHER");
@@ -271,11 +337,33 @@ public class SwitchFreeForm extends BaseHC {
         context.startActivity(intent2, (Bundle) callMethod(options, "toBundle"));
     }
 
-    private void registerForegroundWindowListener() {
+    private static void registerForegroundWindowListener() {
         PathClassLoader pathClassLoader = new PathClassLoader(HCData.getModulePath(), classLoader);
         mForegroundInfoListener = newInstance("com.hchen.switchfreeform.hook.ForegroundInfoListener", pathClassLoader);
         if (mForegroundInfoListener == null) return;
 
         callStaticMethod("miui.process.ProcessManager", "registerForegroundInfoListener", mForegroundInfoListener);
+    }
+
+    private static void updateScreenSizeIfNeed(Context context, boolean isLandscape) {
+        if (mLastIsLandscape == isLandscape) return;
+        getScreenSize(context);
+        mLastIsLandscape = isLandscape;
+    }
+
+    private static void getScreenSize(Context context) {
+        Rect bounds = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getMaximumWindowMetrics().getBounds();
+        mPoint.x = bounds.width();
+        mPoint.y = bounds.height();
+        mScreenY = mPoint.y;
+    }
+
+    private static void updateClassPathToOS1() {
+        mMiuiFreeformModeMoveHandlerClass = "com.android.wm.shell.miuifreeform.MiuiFreeformModeMoveHandler";
+        mMiuiFreeformModeTaskInfoClass = "com.android.wm.shell.miuifreeform.MiuiFreeformModeTaskInfo";
+        // mMultiTaskingDisplayInfoClass = "com.android.wm.shell.common.MultiTaskingDisplayInfo";
+        mMiuiFreeformModeVibrateHelperClass = "com.android.wm.shell.miuifreeform.MiuiFreeformModeVibrateHelper";
+        mMiuiFreeformModeVisualIndicatorClass = "com.android.wm.shell.miuifreeform.MiuiFreeformModeVisualIndicator";
+        mVisualIndicatorAnimator$2Class = "com.android.wm.shell.miuifreeform.MiuiFreeformModeVisualIndicator.VisualIndicatorAnimator$2";
     }
 }

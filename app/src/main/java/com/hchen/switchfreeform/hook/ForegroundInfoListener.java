@@ -39,7 +39,7 @@ import miui.process.IForegroundInfoListener;
  * @author 焕晨HChen
  */
 public class ForegroundInfoListener extends IForegroundInfoListener.Stub {
-    private static final String TAG = "ForegroundWindowListener";
+    private static final String TAG = "SwitchFreeForm";
     @Deprecated
     public Object mAtm;
     @Deprecated
