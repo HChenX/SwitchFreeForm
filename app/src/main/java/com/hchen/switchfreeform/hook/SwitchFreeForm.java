@@ -66,8 +66,8 @@ public class SwitchFreeForm extends BaseHC {
     private static boolean isAnimatorStarted = false;
     private static boolean isAlwaysSwitchFreeForm = false;
     private static int mSwitchFreeFormThreshold = 800;
-    private static final int SWITCH_FREEFORM_DELAY = 450;
-    private static final int SWITCH_FREEFORM_READY_DELAY = 600;
+    private static int SWITCH_FREEFORM_START_DELAY = 450;
+    private static int SWITCH_FREEFORM_READY_DELAY = 600;
     private static int mScreenY = -1;
     private static final int SWITCH_FREEFORM_READY = 1;
     private final static ConcurrentLinkedQueue<Runnable> mRunnableQueue = new ConcurrentLinkedQueue<>();
@@ -90,7 +90,7 @@ public class SwitchFreeForm extends BaseHC {
                 });
 
                 if (!isAnimatorStarted)
-                    mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_DELAY);
+                    mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_START_DELAY);
             }
         }
     };
@@ -126,11 +126,18 @@ public class SwitchFreeForm extends BaseHC {
         try {
             isAlwaysSwitchFreeForm = SystemPropTool.getProp("persist.hchen.switch.freeform.always", false);
             mSwitchFreeFormThreshold = SystemPropTool.getProp("persist.hchen.switch.freeform.threshold", 800);
+            SWITCH_FREEFORM_START_DELAY = SystemPropTool.getProp("persist.hchen.switch.freeform.debug.start.delay", SWITCH_FREEFORM_START_DELAY);
+            SWITCH_FREEFORM_READY_DELAY = SystemPropTool.getProp("persist.hchen.switch.freeform.debug.ready.delay", SWITCH_FREEFORM_READY_DELAY);
         } catch (Throwable e) {
             isAlwaysSwitchFreeForm = false;
             mSwitchFreeFormThreshold = 800;
+            SWITCH_FREEFORM_START_DELAY = 450;
+            SWITCH_FREEFORM_READY_DELAY = 600;
             logE(TAG, e);
         }
+
+        logI(TAG, "Config: isAlwaysSwitchFreeForm: " + isAlwaysSwitchFreeForm + ", mSwitchFreeFormThreshold: " + mSwitchFreeFormThreshold +
+            ", SWITCH_FREEFORM_START_DELAY: " + SWITCH_FREEFORM_START_DELAY + ", SWITCH_FREEFORM_READY_DELAY: " + SWITCH_FREEFORM_READY_DELAY);
 
         Method onBottomCaptionHandleMotionEventsMethod;
         if (isOS1)
@@ -270,7 +277,7 @@ public class SwitchFreeForm extends BaseHC {
                     if (!isAnimatorStarted) return;
 
                     if (!mHandler.hasMessages(SWITCH_FREEFORM_READY)) {
-                        mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_DELAY);
+                        mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_START_DELAY);
                     }
                     isAnimatorStarted = false;
                 }
@@ -286,7 +293,7 @@ public class SwitchFreeForm extends BaseHC {
             } catch (Throwable e) {
                 logE(TAG, e);
             } finally {
-                mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_DELAY);
+                mHandler.postDelayed(QUEUE_PROCESSOR, SWITCH_FREEFORM_START_DELAY);
             }
         }
     }
